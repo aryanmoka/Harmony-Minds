@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------
+   SPOTIFY-STYLE GLOBAL THEME
+   ------------------------------ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+/* Core theme variables */
+:root{
+  --bg: #121212;
+  --surface: #181818;
+  --muted: #b3b3b3;
+  --accent: #1DB954; /* Spotify green */
+  --card: #212121;
+  --glass: rgba(255,255,255,0.04);
+
+  /* Header height used for global page offset (Option B) */
+  --header-height: 64px; /* change if your header is taller/shorter */
+}
+
+/* Global app layout */
+html,body,#root{
+  height:100%;
+  background:var(--bg);
+  color:white;
+  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* ---- GLOBAL FIX: ensure content sits below fixed header ---- */
+body {
+  padding-top: var(--header-height);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* Small helpers */
+.bg-surface { background: var(--surface); }
+.bg-card { background: var(--card); }
+.text-muted { color: var(--muted); }
+.border-muted { border-color: rgba(255,255,255,0.07); }
+
+/* Hover fade */
+.hover-fade {
+  transition: all 0.18s ease;
+}
+.hover-fade:hover {
+  opacity: .95;
+  transform: translateY(-2px);
+}
+
+/* Album mini image for player bar */
+.album-mini {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+/* Player shadow */
+.player-shadow {
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.6);
+}
+
+/* header sizing & small helpers */
+:root {
+  --header-height: 64px; /* tweak if needed */
+}
+
+/* ensure content below header isn't hidden */
+body {
+  --safe-header: var(--header-height);
+}
+
+/* small utility (if you want centered nav visual spacing later) */
+.header-center-nav { display:flex; align-items:center; gap:1rem; }
+
