@@ -12,21 +12,27 @@ import time
 
 # Load environment variables from .env
 load_dotenv()
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO if os.environ.get('FLASK_ENV') != 'production' else logging.WARNING)
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# CORS — allow both localhost and 127.0.0.1 frontends (port 5173)
+# CORS — allow dev frontends and production Netlify domain
 CORS(app, supports_credentials=True, origins=[
     'http://localhost:5173',
-    'http://127.0.0.1:5173'
+    'http://127.0.0.1:5173',
+    'https://spotifyharmonyminds.netlify.app'  # Add your Netlify domain
 ])
 
 # Spotify configuration from environment
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-SPOTIFY_REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI', 'http://127.0.0.1:5000/callback')
+# Dynamic redirect URI: use env var or auto-detect for Render
+SPOTIFY_REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI') or (
+    'https://' + os.environ.get('RENDER_EXTERNAL_URL', 'localhost:5000').replace('https://', '') + '/callback'
+    if os.environ.get('RENDER_EXTERNAL_URL') else 'http://127.0.0.1:5000/callback'
+)
+   
 
 SCOPE = 'playlist-read-private playlist-read-collaborative user-read-private'
 
@@ -128,7 +134,11 @@ def callback():
             session['token_info'] = token_info
 
             # Redirect back to frontend analyze page
-            return redirect('http://127.0.0.1:5173/analyze')
+            # Dynamic frontend URL: use env var or default to Netlify
+            frontend_url = os.getenv('FRONTEND_URL', 'https://spotifyharmonyminds.netlify.app')
+            return redirect(f'{frontend_url}/analyze')  # Success
+   # For errors: return redirect(f'{frontend_url}/?error=auth_failed')
+   
 
         except Exception as e:
             logging.exception("Error exchanging code for token: %s", e)
@@ -442,5 +452,5 @@ def debug_fetch():
 
 
 if __name__ == '__main__':
-    # Run the Flask dev server
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))  # Use Render's PORT or fallback to 5000 for local dev
+    app.run(host='0.0.0.0', port=port, debug=False)  # Bind to 0.0.0.0, disable debug in prod
