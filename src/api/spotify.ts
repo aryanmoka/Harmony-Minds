@@ -1,10 +1,18 @@
-// Auto-detect frontend origin to avoid CORS mismatch
-const backendHost =
-  window.location.hostname === '127.0.0.1'
-    ? '127.0.0.1'
-    : 'localhost';
+// src/api/spotify.ts
+// Prefer a Vite env var for production. Fallback to auto-detect for local dev.
+const PROD_API = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
 
-const API_BASE_URL = `http://${backendHost}:5000/api`;
+const fallbackHost =
+  window.location.hostname === '127.0.0.1' ? '127.0.0.1' : window.location.hostname || 'localhost';
+
+// Use the same protocol as the page (http for dev, https in prod)
+const protocol = window.location.protocol || 'http:';
+
+// Default local API (http://localhost:5000/api or http://127.0.0.1:5000/api)
+const LOCAL_API = `${protocol}//${fallbackHost}:5000/api`;
+
+// Final base — prefer explicit VITE_API_BASE_URL, otherwise use local auto-detect
+export const API_BASE_URL = PROD_API ?? LOCAL_API;
 
 export const spotifyApi = {
   async getAuthUrl(): Promise<string> {
@@ -21,16 +29,22 @@ export const spotifyApi = {
         credentials: 'include',
       });
       const data = await response.json();
-      return data.authenticated;
-    } catch {
+      return !!data.authenticated;
+    } catch (err) {
+      // network/CORS or server down -> treat as not authenticated
+      console.error('Auth status check failed', err);
       return false;
     }
   },
 
   async logout(): Promise<void> {
-    await fetch(`${API_BASE_URL}/auth/logout`, {
-      credentials: 'include',
-    });
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.warn('Logout failed', err);
+    }
   },
 
   async analyzePlaylist(playlistUrl: string) {
@@ -44,8 +58,11 @@ export const spotifyApi = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to analyze playlist');
+      // try to parse JSON error body, but don't blow up if it's not JSON
+      const errBody = await response.json().catch(() => ({} as any));
+      const message =
+        errBody.error || errBody.details || errBody.message || response.statusText || 'Failed to analyze playlist';
+      throw new Error(message);
     }
 
     return response.json();
