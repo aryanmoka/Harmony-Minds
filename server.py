@@ -28,11 +28,11 @@ CORS(app, supports_credentials=True, origins=[
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
 # Dynamic redirect URI: use env var or auto-detect for Render
+       # Dynamic redirect URI: use env var or auto-detect for Render
 SPOTIFY_REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI') or (
-    'https://' + os.environ.get('RENDER_EXTERNAL_URL', 'localhost:5000').replace('https://', '') + '/callback'
-    if os.environ.get('RENDER_EXTERNAL_URL') else 'http://127.0.0.1:5000/callback'
-)
-   
+           os.environ.get('RENDER_EXTERNAL_URL', 'http://127.0.0.1:5000') + '/callback'
+       )
+       
 
 SCOPE = 'playlist-read-private playlist-read-collaborative user-read-private'
 
@@ -142,10 +142,10 @@ def callback():
 
         except Exception as e:
             logging.exception("Error exchanging code for token: %s", e)
-            return redirect('http://127.0.0.1:5173/?error=auth_failed')
+            return redirect(f'{frontend_url}/?error=auth_failed')
 
     # No code present — treat as failure
-    return redirect('http://127.0.0.1:5173/?error=auth_failed')
+    return redirect(f'{frontend_url}/?error=auth_failed')
 
 
 @app.route('/api/auth/status')
