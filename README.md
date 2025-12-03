@@ -3,7 +3,7 @@
 Spotify Playlist Analyzer
 =======
 # Hormony Minds - Spotify Playlist Analyzer
-
+🔗 Live Link: https://spotifyharmonyminds.netlify.app/
 A beautiful, pastel-themed web application that analyzes Spotify playlists to reveal their emotional landscape, mood, and audio characteristics.
 
 ## Features
