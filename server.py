@@ -18,6 +18,19 @@ app = Flask(__name__)
 
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
+# Cross-site cookie settings — use Secure + SameSite=None in production so browser accepts cookies
+if os.environ.get('FLASK_ENV') == 'production':
+    app.config.update({
+        "SESSION_COOKIE_SAMESITE": "None",
+        "SESSION_COOKIE_SECURE": True
+    })
+else:
+    # developer convenience for local testing over http
+    app.config.update({
+        "SESSION_COOKIE_SAMESITE": "Lax",
+        "SESSION_COOKIE_SECURE": False
+    })
+
 # CORS — allow dev frontends and production Netlify domain
 CORS(app, supports_credentials=True, origins=[
     'http://localhost:5173',
@@ -127,12 +140,17 @@ def callback():
     if code:
         try:
             # Request token_info
-            # Different versions of spotipy may return (token_info) or {'access_token':...}
-            token_info = sp_oauth.get_access_token(code, as_dict=True)
-
-            # Some older/newer spotipy versions return (token_info, something) or dict
-            if isinstance(token_info, tuple) and len(token_info) >= 1:
-                token_info = token_info[0]
+            raw = sp_oauth.get_access_token(code, as_dict=True)
+            # Normalize into a dict-like token_info
+            if isinstance(raw, tuple) and len(raw) >= 1:
+                token_info = raw[0]
+            elif isinstance(raw, dict):
+                token_info = raw
+            elif isinstance(raw, str):
+                # older/newer spotipy may return the raw token string — convert to minimal dict
+                token_info = {'access_token': raw, 'expires_in': 3600}
+            else:
+                token_info = None
 
             # Validate token_info
             if not token_info or 'access_token' not in token_info:
@@ -466,4 +484,4 @@ def debug_fetch():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))  # Use Render's PORT or fallback to 5000 for local dev
-    app.run(host='0.0.0.0', port=port, debug=False)  # Bind to 0.0.0.0, disable debug in prod
+    app.run(host='0.0.0.0', port=port, debug=False)  # Bind to 0.0.0, disable debug in prod
