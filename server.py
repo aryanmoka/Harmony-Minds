@@ -15,6 +15,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO if os.environ.get('FLASK_ENV') != 'production' else logging.WARNING)
 
 app = Flask(__name__)
+
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # CORS — allow dev frontends and production Netlify domain
@@ -87,6 +88,8 @@ def get_spotify_client():
             new_token_info = sp_oauth.refresh_access_token(refresh_token)
             # merge updates (new access_token, expires_at, maybe refresh_token)
             token_info.update(new_token_info)
+            # Calculate and set expires_at from expires_in
+            token_info['expires_at'] = int(time.time()) + new_token_info.get('expires_in', 3600)
             session['token_info'] = token_info
             logging.info("Refreshed Spotify access token.")
         except Exception as e:
@@ -135,6 +138,9 @@ def callback():
             if not token_info or 'access_token' not in token_info:
                 logging.error("Token exchange did not return access_token. token_info=%s", token_info)
                 return redirect(f'{frontend_url}/?error=auth_failed')
+
+            # Calculate and set expires_at from expires_in
+            token_info['expires_at'] = int(time.time()) + token_info.get('expires_in', 3600)
 
             # Persist token info in session (server-side)
             session['token_info'] = token_info
