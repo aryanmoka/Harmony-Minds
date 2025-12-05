@@ -15,6 +15,20 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO if os.environ.get('FLASK_ENV') != 'production' else logging.WARNING)
 
 app = Flask(__name__)
+# Allow credentials and read FRONTEND_URL from env so we can support Netlify + localhost dev.
+FRONTEND = os.getenv('FRONTEND_URL', 'https://spotifyharmonyminds.netlify.app')
+CORS_ALLOWED = [
+    FRONTEND,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+]
+
+# Configure CORS for the whole app
+CORS(app,
+     supports_credentials=True,
+     origins=CORS_ALLOWED,
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization"])
 
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
@@ -30,13 +44,6 @@ else:
         "SESSION_COOKIE_SAMESITE": "Lax",
         "SESSION_COOKIE_SECURE": False
     })
-
-# CORS — allow dev frontends and production Netlify domain
-CORS(app, supports_credentials=True, origins=[
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'https://spotifyharmonyminds.netlify.app'  # Add your Netlify domain
-])
 
 # Spotify configuration from environment
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
