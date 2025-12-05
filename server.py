@@ -1,4 +1,4 @@
-# server.py — Hormony Minds backend (full file)
+# server.py — Harmony Minds backend (fixed)
 from flask import Flask, request, jsonify, session, redirect
 from flask_cors import CORS
 import spotipy
@@ -27,12 +27,11 @@ CORS(app, supports_credentials=True, origins=[
 # Spotify configuration from environment
 SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+
 # Dynamic redirect URI: use env var or auto-detect for Render
-       # Dynamic redirect URI: use env var or auto-detect for Render
 SPOTIFY_REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI') or (
-           os.environ.get('RENDER_EXTERNAL_URL', 'http://127.0.0.1:5000') + '/callback'
-       )
-       
+    os.environ.get('RENDER_EXTERNAL_URL', 'http://127.0.0.1:5000') + '/callback'
+)
 
 SCOPE = 'playlist-read-private playlist-read-collaborative user-read-private'
 
@@ -116,29 +115,32 @@ def callback():
     Exchanges code for tokens and stores token_info in Flask session.
     Redirects back to frontend analyze page on success.
     """
+    # Dynamic frontend URL: use env var or default to Netlify
+    frontend_url = os.getenv('FRONTEND_URL', 'https://spotifyharmonyminds.netlify.app')
+
     sp_oauth = get_spotify_oauth()
     code = request.args.get('code')
 
     if code:
         try:
             # Request token_info
-            # use as_dict=True to ensure a dict is returned (spotipy versions vary)
+            # Different versions of spotipy may return (token_info) or {'access_token':...}
             token_info = sp_oauth.get_access_token(code, as_dict=True)
+
+            # Some older/newer spotipy versions return (token_info, something) or dict
+            if isinstance(token_info, tuple) and len(token_info) >= 1:
+                token_info = token_info[0]
 
             # Validate token_info
             if not token_info or 'access_token' not in token_info:
-                logging.error("Token exchange did not return access_token.")
-                return redirect('http://127.0.0.1:5173/?error=auth_failed')
+                logging.error("Token exchange did not return access_token. token_info=%s", token_info)
+                return redirect(f'{frontend_url}/?error=auth_failed')
 
             # Persist token info in session (server-side)
             session['token_info'] = token_info
 
             # Redirect back to frontend analyze page
-            # Dynamic frontend URL: use env var or default to Netlify
-            frontend_url = os.getenv('FRONTEND_URL', 'https://spotifyharmonyminds.netlify.app')
             return redirect(f'{frontend_url}/analyze')  # Success
-   # For errors: return redirect(f'{frontend_url}/?error=auth_failed')
-   
 
         except Exception as e:
             logging.exception("Error exchanging code for token: %s", e)
@@ -402,6 +404,7 @@ def analyze_playlist():
         logging.exception("Unexpected error in analyze_playlist: %s", e)
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
+
 # DEBUG: show token_info (DO NOT share access_token publicly)
 @app.route('/debug/token_info')
 def debug_token_info():
@@ -417,6 +420,7 @@ def debug_token_info():
         'refresh_token_present': 'refresh_token' in ti
     }), 200
 
+
 # DEBUG: call spotify /me to verify token works
 @app.route('/debug/me')
 def debug_me():
@@ -429,6 +433,8 @@ def debug_me():
     except Exception as e:
         logging.exception("debug_me failed: %s", e)
         return jsonify({'error': 'spotify call failed', 'details': str(e)}), 500
+
+
 @app.route('/debug/fetch_playlist')
 def debug_fetch():
     sp = get_spotify_client()
@@ -448,6 +454,7 @@ def debug_fetch():
             'total_tracks': pl.get('tracks', {}).get('total')
         })
     except Exception as e:
+        logging.exception("debug_fetch failed: %s", e)
         return jsonify({'error': 'Failed to fetch playlist', 'details': str(e)}), 500
 
 
